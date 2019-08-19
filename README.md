@@ -2,6 +2,7 @@
 # GoodDollar DApp
 
 [![Build Status](https://travis-ci.com/GoodDollar/GoodDAPP.svg?branch=master)](https://travis-ci.com/GoodDollar/GoodDAPP) [![Coverage Status](https://coveralls.io/repos/github/GoodDollar/GoodDAPP/badge.svg?branch=master)](https://coveralls.io/github/GoodDollar/GoodDAPP?branch=master)
+[![Gitter](https://badges.gitter.im/GoodDollar/community.svg)](https://gitter.im/GoodDollar/community?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
 
 This project is intended to work aside with [GoodServer](https://github.com/GoodDollar/GoodServer) project
 
