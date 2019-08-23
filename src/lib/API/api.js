@@ -95,6 +95,14 @@ class API {
   addUser(user: UserRecord): AxiosPromise<any> {
     return this.client.post('/user/add', { user })
   }
+  
+ /**
+   * `/user/add` post api call
+   * @param {UserRecord} user
+   */
+  async checkUserField(field: any, value: any): AxiosPromise<any> {
+    return await this.client.post('/user/check/field', { field, value })
+  }
 
   /**
    * `/user/delete` post api call

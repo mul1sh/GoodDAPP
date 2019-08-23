@@ -241,7 +241,12 @@ export class UserStorage {
     walletAddress: true,
     username: true,
   }
-
+  
+  static privateFields = [
+    'email',
+    'mobile',
+  ]
+  
   /**
    * Clean string removing blank spaces and special characters, and converts to lower case
    *
@@ -679,13 +684,18 @@ export class UserStorage {
       logger.error(`indexProfileField - field ${field} value is empty (value: ${value})`, cleanValue)
       return false
     }
-
     try {
-      const indexValue = await global.gun
-        .get(`users/by${field}`)
-        .get(cleanValue)
-        .then()
-      return !(indexValue && indexValue.pub !== global.gun.user().is.pub)
+      if (UserStorage.privateFields.indexOf(field) >= 0) {
+        const result = await API.checkUserField(field, cleanValue)
+        return (!result.data.isAlready)
+      } else {
+        const indexValue = await global.gun
+          .get(`users/by${field}`)
+          .get(cleanValue)
+          .then()
+        return !(indexValue && indexValue.pub !== global.gun.user().is.pub)
+      }
+     
     } catch (err) {
       logger.error('indexProfileField', err)
       return true
