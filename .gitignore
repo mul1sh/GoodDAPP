@@ -9,3 +9,4 @@ tree.txt
 radata/
 .idea
 yarn.lock
+loadtest/artillery/tests/aut-eth/temp
