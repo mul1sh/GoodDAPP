@@ -34,9 +34,9 @@ export ARRIVALRATE=${ARRIVALRATE_USER};
 
 export REACT_APP_LOG_LEVEL=debug;
 export NODE_ENV=development;
-export REACT_APP_GUN_PUBLIC_URL=http://localhost:3003/gun;
-export REACT_APP_PUBLIC_URL=http://localhost:3000;
-export TARGET=http://localhost:3003
+export REACT_APP_GUN_PUBLIC_URL=https://good-server.herokuapp.com/gun;
+export REACT_APP_PUBLIC_URL=https://good-server.herokuapp.com;
+export TARGET=https://good-server.herokuapp.com
 
 npx babel-node loadtest/artillery/index.js ${TEST_NAME}
 

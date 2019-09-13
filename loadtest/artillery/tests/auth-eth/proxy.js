@@ -11,6 +11,7 @@ import { log } from '../../utils/commons'
  * @returns {Promise<boolean>}
  */
 const runProxy = async () => {
+  return true
   try {
     await generatedData()
   } catch (e) {
@@ -24,18 +25,18 @@ const runProxy = async () => {
     const count = process.env.DURATION * process.env.ARRIVALRATE
     log('Run generated random data: ' + count)
     let creds = []
-    
+
     if (fs.existsSync(`${__dirname}/temp`)) {
       rimraf.sync(`${__dirname}/temp`);
     }
     fs.mkdirSync(`${__dirname}/temp`);
-    
+
     for (let i=0; i < count; i++) {
       creds.push(await createCreds(i))
     }
-    
 
-    
+
+
     if (creds) {
       fs.writeFileSync(`${__dirname}/random.data`, JSON.stringify(creds))
     }
@@ -60,7 +61,7 @@ const createCreds = async (i) => {
     await storage.ready
     const creds = await login.login()
     return creds
-    
+
   } catch (e) {
     console.log(e)
   }
