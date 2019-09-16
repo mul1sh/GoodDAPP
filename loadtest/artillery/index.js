@@ -5,7 +5,7 @@ import {log} from './utils/commons'
 
 class artilleryTest {
   errorMessage = []
-  
+
   constructor(testName) {
     this.testName = testName.trim()
     this.pathToFolder = `${__dirname}/tests/${this.testName}`
@@ -13,7 +13,7 @@ class artilleryTest {
     this.pathToTest = `${__dirname}/tests/${this.testName}/test.yml`
     this.testResult = ''
   }
-  
+
   /**
    * init abd run test
    *
@@ -29,7 +29,7 @@ class artilleryTest {
       log(this.testResult)
     }
   }
-  
+
   /**
    * Before run test, run proxy
    *
@@ -43,10 +43,10 @@ class artilleryTest {
     } catch (e) {
       console.log(e);
     }
-    
+
     return true
   }
-  
+
   /**
    * Run test
    *
@@ -54,29 +54,29 @@ class artilleryTest {
    */
   runTest = async () => {
     log('Run test')
-    this.testResult = childProcess.execSync(`${__dirname}/../../node_modules/.bin/artillery run ${ this.pathToTest}`).toString();
+    this.testResult = childProcess.execSync(`${__dirname}/../../node_modules/.bin/artillery run -o report ${ this.pathToTest}`).toString();
   }
-  
+
   /**
    * Checking test files
    */
   isTestExists = () => {
     log('Start check file')
-    
+
     if (!fs.existsSync(this.pathToFolder)) {
       this.addError(`Folder not found ${this.pathToFolder}`)
     }
-    
+
     if (!fs.existsSync(this.pathToProxy)) {
       this.addError(`File not found ${this.pathToProxy}`)
     }
-    
+
     if (!fs.existsSync(this.pathToTest)) {
       this.addError(`File not found ${this.pathToTest}`)
     }
     log('End check file')
   }
-  
+
   /**
    * Add error message
    *
@@ -85,7 +85,7 @@ class artilleryTest {
   addError = (error) => {
     this.errorMessage.push(error)
   }
-  
+
 }
 
 
