@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-TEST_NAME="auth-eth"
+TEST_NAME="admin-wallet"
 ZERO=0
 echo '-----  TEST LIST ------ '
 for entry in `ls loadtest/artillery/tests`; do
@@ -36,7 +36,7 @@ export REACT_APP_LOG_LEVEL=debug;
 export NODE_ENV=development;
 export REACT_APP_GUN_PUBLIC_URL=https://good-server.herokuapp.com/gun;
 export REACT_APP_PUBLIC_URL=https://good-server.herokuapp.com;
-export TARGET=https://good-server.herokuapp.com
+export TARGET=http://localhost:3003
 
 npx babel-node loadtest/artillery/index.js ${TEST_NAME}
 
