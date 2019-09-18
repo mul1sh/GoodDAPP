@@ -2,6 +2,8 @@
 import React, { useEffect, useState } from 'react'
 import _get from 'lodash/get'
 import type { Store } from 'undux'
+
+// import * as web3Utils from 'web3-utils'
 import normalize from '../../lib/utils/normalizeText'
 import GDStore from '../../lib/undux/GDStore'
 import API from '../../lib/API/api'
@@ -10,7 +12,10 @@ import { useDialog, useErrorDialog } from '../../lib/undux/utils/dialog'
 import { getInitialFeed, getNextFeed, PAGE_SIZE } from '../../lib/undux/utils/feed'
 import { executeWithdraw } from '../../lib/undux/utils/withdraw'
 import { weiToMask } from '../../lib/wallet/utils'
+
 import { createStackNavigator } from '../appNavigation/stackNavigation'
+
+//import goodWallet from '../../lib/wallet/GoodWallet';
 import { PushButton } from '../appNavigation/PushButton'
 import TabsView from '../appNavigation/TabsView'
 import Avatar from '../common/view/Avatar'
@@ -23,10 +28,13 @@ import userStorage from '../../lib/gundb/UserStorage'
 import { FAQ, PrivacyArticle, PrivacyPolicy, RewardsTab, Support, TermsOfUse } from '../webView/webViewInstances'
 import { withStyles } from '../../lib/styles'
 import Mnemonics from '../signin/Mnemonics'
+
+// import goodWallet from '../../lib/wallet/GoodWallet'
 import Amount from './Amount'
 import Claim from './Claim'
 import FeedList from './FeedList'
 import FeedModalList from './FeedModalList'
+import OutOfGasError from './OutOfGasError'
 import Reason from './Reason'
 import Receive from './Receive'
 import Who from './Who'
@@ -54,6 +62,7 @@ export type DashboardProps = {
   styles?: any,
 }
 const Dashboard = props => {
+  // const MIN_BALANCE_VALUE = '100000'
   const store = SimpleStore.useStore()
   const gdstore = GDStore.useStore()
   const [showDialog, hideDialog] = useDialog()
@@ -64,11 +73,15 @@ const Dashboard = props => {
     const loginToken = await userStorage.getProfileFieldValue('loginToken')
 
     if (!loginToken) {
-      const response = await API.getLoginToken()
+      try {
+        const response = await API.getLoginToken()
 
-      const _loginToken = _get(response, 'data.loginToken')
+        const _loginToken = _get(response, 'data.loginToken')
 
-      await userStorage.setProfileField('loginToken', _loginToken, 'private')
+        await userStorage.setProfileField('loginToken', _loginToken, 'private')
+      } catch (e) {
+        log.error('prepareLoginToken failed', e.message, e)
+      }
     }
   }
 
@@ -83,6 +96,8 @@ const Dashboard = props => {
       log.debug('gun getFeed callback', { data })
       getInitialFeed(gdstore)
     }, true)
+
+    // showOutOfGasError()
   }, [])
 
   useEffect(() => {
@@ -122,11 +137,21 @@ const Dashboard = props => {
     }
   }
 
+  // const showOutOfGasError = async () => {
+  //   const { ok } = await goodWallet.verifyHasGas(web3Utils.toWei(MIN_BALANCE_VALUE, 'gwei'), {
+  //     topWallet: false,
+  //   })
+  //
+  //   if (!ok) {
+  //     props.screenProps.navigateTo('OutOfGasError')
+  //   }
+  // }
+
   const handleWithdraw = async () => {
     const { paymentCode, reason } = props.navigation.state.params
     try {
       showDialog({ title: 'Processing Payment Link...', loading: true, buttons: [{ text: 'YAY!' }] })
-      await executeWithdraw(store, paymentCode, reason)
+      await executeWithdraw(store, decodeURI(paymentCode), decodeURI(reason))
       hideDialog()
     } catch (e) {
       showErrorDialog(e)
@@ -223,7 +248,8 @@ const Dashboard = props => {
           const scrollPos = nativeEvent.contentOffset.y
           const scrollPosAlt = headerLarge ? scrollPos - HEIGHT_DIFF : scrollPos + HEIGHT_DIFF
           const newHeaderLarge = scrollPos <= HEIGHT_BASE || scrollPosAlt <= HEIGHT_BASE
-          log.info('scrollPos', { newHeaderLarge, scrollPos, scrollPosAlt, HEIGHT_DIFF, HEIGHT_BASE, HEIGHT_FULL })
+
+          // log.info('scrollPos', { newHeaderLarge, scrollPos, scrollPosAlt, HEIGHT_DIFF, HEIGHT_BASE, HEIGHT_FULL })
           if (newHeaderLarge !== headerLarge) {
             setHeaderLarge(newHeaderLarge)
           }
@@ -383,5 +409,6 @@ export default createStackNavigator({
   Support,
   FAQ,
   Recover: Mnemonics,
+  OutOfGasError,
   Rewards: RewardsTab,
 })
