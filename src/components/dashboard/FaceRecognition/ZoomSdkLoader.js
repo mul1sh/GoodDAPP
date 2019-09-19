@@ -11,7 +11,7 @@ declare var ZoomSDK: any
 const licenseKey = Config.zoomLicenseKey
 
 export class ZoomSdkLoader {
-  ready = this.load()
+  ready: Promise<>
 
   /* Orchestrates zoom loading & initialization process process */
   async load() {
@@ -23,8 +23,8 @@ export class ZoomSdkLoader {
       }
       this.loadedZoom = ZoomSDK
       log.info('ZoomSDK loaded', this.loadedZoom)
-      this.loadedZoom.zoomResourceDirectory('/ZoomAuthentication.js/resources/')
-      await this.initializeAndPreload(this.loadedZoom) // TODO: what  to do in case of init errors?
+      this.loadedZoom.setResourceDirectory('/ZoomAuthentication.js/resources/')
+      this.ready = await this.initializeAndPreload(this.loadedZoom) // TODO: what  to do in case of init errors?
       log.info('ZoomSDK initialized and preloaded', this.loadedZoom)
       return this.loadedZoom
     } catch (e) {
@@ -46,7 +46,6 @@ export class ZoomSdkLoader {
 
   async initializeAndPreload(zoomSDK: any): Promise<void> {
     await this.initialize(zoomSDK)
-    await this.preload(zoomSDK)
   }
 
   /*Call ZoomSDK initialize with license key */
@@ -58,28 +57,13 @@ export class ZoomSdkLoader {
 
       log.info('initializing zoom ..')
       log.info({ zoomSDK })
-      zoomSDK.initialize(licenseKey, (initializationSuccessful: boolean) => {
+      zoomSDK.initialize('dn7644BGhERbp4lSzMNilj7tenuXgHKv', (initializationSuccessful: boolean) => {
         log.info(`zoom initialization status: ${zoomSDK.getStatus()}`)
         if (initializationSuccessful) {
           log.info('zoom initialized successfully')
           resolve()
         }
         reject(new Error(`unable to initialize zoom sdk: ${zoomSDK.getStatus()}`))
-      })
-    })
-  }
-
-  /* Preloads Zoom SDK */
-  preload(zoomSDK: any): Promise<void> {
-    return new Promise((resolve, reject) => {
-      //styleZoom(zoomSDK)
-      zoomSDK.preload((preloadResult: any) => {
-        if (preloadResult) {
-          log.info('Preload status: ', { preloadResult })
-          return resolve()
-        }
-
-        reject()
       })
     })
   }
