@@ -1,9 +1,23 @@
 import Gun from 'gun'
 import bip39 from 'bip39-light'
+import * as ethUtil from 'ethereumjs-util'
 import {GoodWallet} from "../../../../src/lib/wallet/GoodWalletClass";
 import {UserStorage} from "../../../../src/lib/gundb/UserStorageClass";
 import {GoodWalletLogin} from "../../../../src/lib/login/GoodWalletLogin";
 import {log} from '../../utils/commons'
+
+export const recoverPublickey = (signature, msg, nonce) => {
+  const sig = ethUtil.fromRpcSig(signature)
+
+  const messageHash = ethUtil.keccak(
+    `\u0019Ethereum Signed Message:\n${(msg.length + nonce.length).toString()}${msg}${nonce}`
+  )
+
+  const publicKey = ethUtil.ecrecover(messageHash, sig.v, sig.r, sig.s)
+  const recovered = ethUtil.bufferToHex(ethUtil.pubToAddress(publicKey))
+
+  return recovered
+}
 
 const fs = require("fs");
 const rimraf = require("rimraf");
@@ -12,7 +26,7 @@ const rimraf = require("rimraf");
  * @returns {Promise<boolean>}
  */
 const runProxy = async () => {
-  return
+  // return true
   try {
     await generatedData()
   } catch (e) {
@@ -34,6 +48,7 @@ const generatedData = async () => {
 
   for (let i = 0; i < count; i++) {
     creds.push(await createSignature(i))
+    log(`Generated:  ${i + 1}/${count}`)
   }
 
 
@@ -60,7 +75,11 @@ const createSignature = async (i) => {
     let login = new GoodWalletLogin(wallet, storage)
     await storage.ready
     const creds = await login.login()
-    return creds
+    const gdPublicAddress = recoverPublickey(creds.gdSignature, 'Login to GoodDAPP', creds.nonce)
+    console.log('!!!!!!!!',gdPublicAddress)
+    return {
+      ...creds,gdPublicAddress
+    }
 
   } catch (e) {
     console.log(e)

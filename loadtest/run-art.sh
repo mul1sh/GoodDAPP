@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-TEST_NAME="auth-eth"
+TEST_NAME="admin-wallet"
 ZERO=0
 echo '-----  TEST LIST ------ '
 for entry in `ls loadtest/artillery/tests`; do
