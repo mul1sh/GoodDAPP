@@ -4,7 +4,6 @@ import Mutex from 'await-mutex'
 import SEA from 'gun/sea'
 import find from 'lodash/find'
 import flatten from 'lodash/flatten'
-import get from 'lodash/get'
 import isEqual from 'lodash/isEqual'
 import keys from 'lodash/keys'
 import maxBy from 'lodash/maxBy'
@@ -157,11 +156,6 @@ export const getReceiveDataFromReceipt = (receipt: any) => {
       )
     )
 
-  // bonus claimed log
-  const bonusLog = logs.find(log => {
-    return log && log.name && log.name === CONTRACT_EVENT_TYPE_BONUS_CLAIMED
-  })
-
   //maxBy is used in case transaction also paid a TX fee/burn, so since they are small
   //it filters them out
   const transferLog = maxBy(
@@ -178,7 +172,7 @@ export const getReceiveDataFromReceipt = (receipt: any) => {
 
   logger.debug('getReceiveDataFromReceipt', { logs: receipt.logs, transferLog, withdrawLog })
 
-  return withdrawLog || transferLog || bonusLog
+  return withdrawLog || transferLog
 }
 
 export const getOperationType = (data: any, account: string) => {
@@ -436,7 +430,6 @@ export class UserStorage {
       this.wallet.subscribeToEvent('otplUpdated', receipt => this.handleOTPLUpdated(receipt))
       this.wallet.subscribeToEvent('receiptUpdated', receipt => this.handleReceiptUpdated(receipt))
       this.wallet.subscribeToEvent('receiptReceived', receipt => this.handleReceiptUpdated(receipt))
-      this.wallet.subscribeToEvent(CONTRACT_EVENT_TYPE_BONUS_CLAIMED, receipt => this.handleReceiptUpdated(receipt))
       res(true)
     })
   }
@@ -998,13 +991,21 @@ export class UserStorage {
           feedItem =>
             feedItem.data && ['deleted', 'cancelled'].includes(feedItem.status || feedItem.otplStatus) === false
         )
-        .map(feedItem => this.formatEvent(feedItem))
+        .map(feedItem =>
+          this.formatEvent(feedItem).catch(e => {
+            logger.error('getFormattedEvents Failed formatting event:', feedItem, e.message, e)
+            return {}
+          })
+        )
     )
   }
 
   async getFormatedEventById(id: string): Promise<StandardFeed> {
     const prevFeedEvent = await this.getFeedItemByTransactionHash(id)
-    const standardPrevFeedEvent = await this.formatEvent(prevFeedEvent)
+    const standardPrevFeedEvent = await this.formatEvent(prevFeedEvent).catch(e => {
+      logger.error('getFormatedEventById Failed formatting event:', id, e.message, e)
+      return undefined
+    })
     if (!prevFeedEvent) {
       return standardPrevFeedEvent
     }
@@ -1015,7 +1016,10 @@ export class UserStorage {
     logger.warn('getFormatedEventById: receipt missing for:', { id, standardPrevFeedEvent })
 
     //if for some reason we dont have the receipt(from blockchain) yet then fetch it
-    const receipt = await this.wallet.getReceiptWithLogs(id)
+    const receipt = await this.wallet.getReceiptWithLogs(id).catch(e => {
+      logger.warn('no receipt found for id:', id, e.message, e)
+      return undefined
+    })
     if (!receipt) {
       return standardPrevFeedEvent
     }
@@ -1023,7 +1027,10 @@ export class UserStorage {
     //update the event
     let updatedEvent = await this.handleReceiptUpdated(receipt)
     logger.debug('getFormatedEventById updated event with receipt', { prevFeedEvent, updatedEvent })
-    return this.formatEvent(updatedEvent)
+    return this.formatEvent(updatedEvent).catch(e => {
+      logger.error('getFormatedEventById Failed formatting event:', id, e.message, e)
+      return {}
+    })
   }
 
   /**
@@ -1099,37 +1106,64 @@ export class UserStorage {
   async formatEvent(event: FeedEvent): Promise<StandardFeed> {
     logger.debug('formatEvent: incoming event', event.id, { event })
 
-    const { data, type, date, id, status, createdDate } = event
-    const { sender, reason, code: withdrawCode, otplStatus, customName, subtitle } = data
+    try {
+      const { data, type, date, id, status, createdDate } = event
+      const { sender, reason, code: withdrawCode, otplStatus, customName, subtitle } = data
 
-    const { address, initiator, initiatorType, value, displayName, message } = this._extractData(event)
-    const withdrawStatus = this._extractWithdrawStatus(withdrawCode, otplStatus, status)
-    const displayType = this._extractDisplayType(type, withdrawStatus, status)
+      const { address, initiator, initiatorType, value, displayName, message } = this._extractData(event)
+      const withdrawStatus = this._extractWithdrawStatus(withdrawCode, otplStatus, status)
+      const displayType = this._extractDisplayType(type, withdrawStatus, status)
+      logger.debug('formatEvent:', event.id, { initiatorType, initiator, address })
+      const profileNode = this._extractProfileToShow(initiatorType, initiator, address)
+      const [avatar, fullName] = await Promise.all([
+        this._extractAvatar(type, withdrawStatus, profileNode, address).catch(e => {
+          logger.warn('formatEvent: failed extractAvatar', e.message, e, {
+            type,
+            withdrawStatus,
+            profileNode,
+            address,
+          })
+          return undefined
+        }),
+        this._extractFullName(customName, profileNode, initiatorType, initiator, type, address, displayName).catch(
+          e => {
+            logger.warn('formatEvent: failed extractFullName', e.message, e, {
+              customName,
+              profileNode,
+              initiatorType,
+              initiator,
+              type,
+              address,
+              displayName,
+            })
+            return undefined
+          }
+        ),
+      ])
 
-    const profileToShow = await this._extractProfileToShow(initiatorType, initiator, address)
-    const [avatar, fullName] = await Promise.all([
-      this._extractAvatar(type, withdrawStatus, profileToShow, address),
-      this._extractFullName(customName, profileToShow, initiatorType, initiator, type, address, displayName),
-    ])
-
-    return {
-      id,
-      date: new Date(date).getTime(),
-      type,
-      displayType,
-      status,
-      createdDate,
-      data: {
-        endpoint: {
-          address: sender,
-          fullName,
-          avatar,
-          withdrawStatus,
+      return {
+        id,
+        date: new Date(date).getTime(),
+        type,
+        displayType,
+        status,
+        createdDate,
+        data: {
+          endpoint: {
+            address: sender,
+            fullName,
+            avatar,
+            withdrawStatus,
+          },
+          amount: value,
+          message: reason || message,
+          subtitle,
+          withdrawCode,
         },
-        amount: value,
-        message: reason || message,
-        subtitle,
-      },
+      }
+    } catch (e) {
+      logger.error('formatEvent: failed formatting event:', event, e.message, e)
+      return {}
     }
   }
 
@@ -1175,34 +1209,35 @@ export class UserStorage {
     return `${type}${sufix}`
   }
 
-  async _extractProfileToShow(initiatorType, initiator, address) {
+  _extractProfileToShow(initiatorType, initiator, address): Gun {
     const getProfile = (group, value) =>
       this.gun
         .get(group)
         .get(value)
         .get('profile')
 
-    const searchField = (initiatorType && `by${initiatorType}`) || ''
+    const searchField = initiatorType && `by${initiatorType}`
     const byIndex = searchField && getProfile(`users/${searchField}`, initiator)
     const byAddress = address && getProfile(`users/bywalletAddress`, address)
-    const [profileByIndex, profileByAddress] = await Promise.all([byIndex, byAddress])
 
-    return (profileByIndex || profileByAddress) && this.gun.get((profileByIndex || profileByAddress)._)
+    // const [profileByIndex, profileByAddress] = await Promise.all([byIndex, byAddress])
+
+    return byIndex || byAddress
   }
 
   async _extractAvatar(type, withdrawStatus, profileToShow, address) {
     const favicon = `${process.env.PUBLIC_URL}/favicon-96x96.png`
-    const profileFromGun =
+    const profileFromGun = () =>
       profileToShow &&
-      (await profileToShow
+      profileToShow
         .get('avatar')
         .get('display')
-        .then())
+        .then()
 
     return (
       (type === EVENT_TYPE_BONUS && favicon) ||
       (type === EVENT_TYPE_SEND && withdrawStatus === 'error' && favicon) || //errored send
-      profileFromGun || // extract avatar from profile
+      (await profileFromGun()) || // extract avatar from profile
       (type === EVENT_TYPE_CLAIM || address === '0x0000000000000000000000000000000000000000' ? favicon : undefined)
     )
   }
@@ -1546,41 +1581,43 @@ export class UserStorage {
    * Calling the server to delete their data
    */
   async deleteAccount(): Promise<boolean> {
-    let deleteResults = await Promise.all([
-      this.wallet
-        .deleteAccount()
-        .then(r => ({ wallet: 'ok' }))
-        .catch(e => ({ wallet: 'failed' })),
-      API.deleteAccount(this.wallet.getAccountForType('zoomId'))
-        .then(r => get(r, 'data.results'))
-        .catch(e => ({
-          server: 'failed',
-        })),
-      this.deleteProfile()
-        .then(r => ({
-          profile: 'ok',
-        }))
-        .catch(r => ({
-          profile: 'failed',
-        })),
-      this.gunuser
-        .get('feed')
-        .putAck(null)
-        .then(r => ({
-          feed: 'ok',
-        }))
-        .catch(r => ({
-          feed: 'failed',
-        })),
-    ])
+    const zoomId = await this.wallet.getAccountForType('zoomId').replace('0x', '')
+    const zoomSignature = await this.wallet.sign(zoomId, 'zoomId')
+    let deleteResults = false
+    let deleteAccountResult
 
-    //Issue with gun delete()
-    // let profileDelete = await this.gunuser
-    //   .delete()
-    //   .then(r => ({ profile: 'ok' }))
-    //   .catch(e => ({
-    //     profile: 'failed'
-    //   }))
+    try {
+      deleteAccountResult = await API.deleteAccount(zoomId, zoomSignature)
+    } catch (e) {
+      logger.error('deleteAccount', { e })
+      return false
+    }
+
+    if (deleteAccountResult.data.ok) {
+      deleteResults = await Promise.all([
+        this.wallet
+          .deleteAccount()
+          .then(r => ({ wallet: 'ok' }))
+          .catch(e => ({ wallet: 'failed' })),
+        this.deleteProfile()
+          .then(r => ({
+            profile: 'ok',
+          }))
+          .catch(r => ({
+            profile: 'failed',
+          })),
+        this.gunuser
+          .get('feed')
+          .putAck(null)
+          .then(r => ({
+            feed: 'ok',
+          }))
+          .catch(r => ({
+            feed: 'failed',
+          })),
+      ])
+    }
+
     logger.debug('deleteAccount', { deleteResults })
     return deleteResults
   }

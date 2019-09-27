@@ -6,9 +6,9 @@ import PaperProvider from 'react-native-paper/src/core/Provider'
 import { theme } from './components/theme/styles'
 import SimpleStore from './lib/undux/SimpleStore'
 import RouterSelector from './RouterSelector.web'
-import { SimpleStoreDialog } from './components/common/dialogs/CustomDialog'
 import LoadingIndicator from './components/common/view/LoadingIndicator'
 import SplashDesktop from './components/splash/SplashDesktop'
+import AddWebApp from './components/common/view/AddWebApp'
 
 const App = () => {
   const store = SimpleStore.useStore()
@@ -22,13 +22,18 @@ const App = () => {
     setUseDesktop(true)
   }
 
-  const Splash = !isMobile && !useDesktop ? <SplashDesktop onContinue={continueWithDesktop} /> : <RouterSelector />
+  const Splash =
+    !isMobile && !useDesktop ? (
+      <SplashDesktop onContinue={continueWithDesktop} urlForQR={window.location.href} />
+    ) : (
+      <RouterSelector />
+    )
 
   return (
     <PaperProvider theme={theme}>
       <SafeAreaView style={styles.safeAreaView}>
         <React.Fragment>
-          <SimpleStoreDialog />
+          <AddWebApp />
           <LoadingIndicator />
           {/* <ReCaptcha sitekey={Config.recaptcha} action="auth" verifyCallback={this.onRecaptcha} /> */}
           {Splash}

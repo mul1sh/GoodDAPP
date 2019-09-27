@@ -230,7 +230,7 @@ export class GoodWallet {
    * @returns {Promise<R>|Promise<R|*>|Promise<*>}
    */
   listenTxUpdates(fromBlock: string = '0', blockIntervalCallback: Function) {
-    log.trace('listenTxUpdates listening from block:', fromBlock)
+    log.debug('listenTxUpdates listening from block:', fromBlock)
     fromBlock = new BN(fromBlock)
 
     // subscribe to bonus claimed events
@@ -489,13 +489,46 @@ export class GoodWallet {
   }
 
   /**
-   * Checks if use can send an specific amount of G$s
-   * @param {number} amount
+   * Get transaction fee from GoodDollarReserveContract
    * @returns {Promise<boolean>}
    */
-  async canSend(amount: number): Promise<boolean> {
+  getTxFee(): Promise<boolean> {
+    return this.reserveContract.methods
+      .transactionFee()
+      .call()
+      .then(toBN)
+  }
+
+  /**
+   * Get transaction fee from GoodDollarReserveContract
+   * @returns {Promise<boolean>}
+   */
+  async calculateTxFee(amount): Promise<boolean> {
+    // 1% is represented as 10000, and divided by 1000000 when required to be % representation to enable more granularity in the numbers (as Solidity doesn't support floating point)
+    const percents = await this.getTxFee()
+
+    return new BN(amount).mul(percents).div(new BN('1000000'))
+  }
+
+  /**
+   * Checks if use can send an specific amount of G$s
+   * @param {number} amount
+   * @param {object} options
+   * @returns {Promise<boolean>}
+   */
+  async canSend(amount: number, options = {}): Promise<boolean> {
+    const { feeIncluded = false } = options
+    let amountWithFee = amount
+
+    if (!feeIncluded) {
+      // 1% is represented as 10000, and divided by 1000000 when required to be % representation to enable more granularity in the numbers (as Solidity doesn't support floating point)
+      const fee = await this.calculateTxFee(amount)
+
+      amountWithFee = new BN(amount).add(fee)
+    }
+
     const balance = await this.balanceOf()
-    return parseInt(amount) <= parseInt(balance)
+    return parseInt(amountWithFee) <= parseInt(balance)
   }
 
   /**
@@ -741,31 +774,39 @@ export class GoodWallet {
    * @param {object} options
    */
   async verifyHasGas(wei: number, options = {}) {
-    const { topWallet = true } = options
+    try {
+      const { topWallet = true } = options
 
-    let nativeBalance = await this.wallet.eth.getBalance(this.account)
-    if (nativeBalance > wei) {
-      return {
-        ok: true,
-      }
-    }
-
-    if (topWallet) {
-      const toppingRes = await API.verifyTopWallet()
-      if (!toppingRes.ok && toppingRes.sendEtherOutOfSystem) {
+      let nativeBalance = await this.wallet.eth.getBalance(this.account)
+      if (nativeBalance > wei) {
         return {
-          error: true,
+          ok: true,
         }
       }
-      nativeBalance = await this.wallet.eth.getBalance(this.account)
+
+      if (topWallet) {
+        const toppingRes = await API.verifyTopWallet()
+        const { data } = toppingRes
+        if (data.ok !== 1) {
+          return {
+            ok: false,
+            error: (data.error && !~data.error.indexOf(`User doesn't need topping`)) || data.sendEtherOutOfSystem,
+          }
+        }
+        nativeBalance = await this.wallet.eth.getBalance(this.account)
+        return {
+          ok: data.ok && nativeBalance > wei,
+        }
+      }
 
       return {
-        ok: toppingRes.ok && nativeBalance > wei,
+        ok: false,
       }
-    }
-
-    return {
-      ok: false,
+    } catch (e) {
+      return {
+        ok: false,
+        error: true,
+      }
     }
   }
 

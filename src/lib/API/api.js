@@ -70,7 +70,7 @@ class API {
         e => {
           // Do something with response error
           log.error('axios response error', e.message, e)
-          if (e.response.data) {
+          if (e.response && e.response.data) {
             return Promise.reject(e.response.data)
           }
           return Promise.reject(e)
@@ -87,7 +87,7 @@ class API {
       w3Instance.interceptors.response.use(
         response => response.data,
         error => {
-          if (error.response.data) {
+          if (error.response && error.response.data) {
             return Promise.reject(error.response.data)
           }
 
@@ -117,9 +117,22 @@ class API {
   /**
    * `/user/delete` post api call
    * @param {string} zoomId
+   * @param {string} zoomSignature
    */
-  deleteAccount(zoomId: string): AxiosPromise<any> {
-    return this.client.post('/user/delete', { zoomId })
+  deleteAccount(zoomId: string, zoomSignature: string): AxiosPromise<any> {
+    return this.client.post('/user/delete', { zoomId, zoomSignature })
+  }
+
+  /**
+   * `/w3Site/api/wl/user/update_profile` post w3 api call to delete wallet address
+   * @param {string} token
+   */
+  deleteWalletFromW3Site(token): AxiosPromise<any> {
+    this.w3Client.defaults.headers.common.Authorization = token
+
+    return this.w3Client.put('/api/wl/user/update_profile', {
+      wallet_address: null,
+    })
   }
 
   /**
