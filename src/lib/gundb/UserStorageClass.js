@@ -29,7 +29,6 @@ const EVENT_TYPE_SEND = 'send'
 const EVENT_TYPE_RECEIVE = 'receive'
 const CONTRACT_EVENT_TYPE_PAYMENT_WITHDRAW = 'PaymentWithdraw'
 const CONTRACT_EVENT_TYPE_PAYMENT_CANCEL = 'PaymentCancel'
-const CONTRACT_EVENT_TYPE_BONUS_CLAIMED = 'BonusClaimed'
 const CONTRACT_EVENT_TYPE_TRANSFER = 'Transfer'
 
 const COMPLETED_BONUS_REASON_TEXT = 'Your recent earned rewards'
