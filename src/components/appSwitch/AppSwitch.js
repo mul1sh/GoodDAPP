@@ -71,7 +71,7 @@ const AppSwitch = (props: LoadingProps) => {
     )
     gdstore.set('isLoggedIn')(isLoggedIn)
     gdstore.set('isLoggedInCitizen')(isLoggedInCitizen)
-    isLoggedInCitizen ? API.verifyTopWallet() : Promise.resolve()
+    await API.verifyTopWallet()
 
     // if (isLoggedIn) {
     //   if (destDetails) {
