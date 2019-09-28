@@ -45,7 +45,7 @@ const status = {
  */
 const initTransferEvents = async (store: Store) => {
   if (!status.started) {
-    const lastBlock = await userStorage.getLastBlockNode().then()
+    const lastBlock = (await userStorage.getLastBlockNode().then()) || '0'
     log.debug('starting events listener', { lastBlock })
 
     status.started = true
