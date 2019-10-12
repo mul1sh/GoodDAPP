@@ -23,7 +23,7 @@ function filterObject(obj) {
   return pickBy(obj, (v, k) => v !== undefined && v !== '')
 }
 
-const EditProfile = ({ screenProps, theme, styles, navigation }) => {
+const EditProfile = ({ screenProps, theme, styles }) => {
   const store = GDStore.useStore()
   const storedProfile = store.get('privateProfile')
   const [profile, setProfile] = useState(storedProfile)
@@ -31,7 +31,6 @@ const EditProfile = ({ screenProps, theme, styles, navigation }) => {
   const [isValid, setIsValid] = useState(true)
   const [isPristine, setIsPristine] = useState(true)
   const [errors, setErrors] = useState({})
-  const [lockSubmit, setLockSubmit] = useState(false)
   const [showErrorDialog] = useErrorDialog()
 
   //initialize profile value for first time from storedprofile
@@ -155,21 +154,9 @@ const EditProfile = ({ screenProps, theme, styles, navigation }) => {
           <UserAvatar profile={profile} onPress={handleAvatarPress}>
             <CameraButton handleCameraPress={handleCameraPress} />
           </UserAvatar>
-          <SaveButton
-            disabled={lockSubmit || isPristine || !isValid}
-            onPress={handleSaveButton}
-            onPressDone={onProfileSaved}
-          />
+          <SaveButton disabled={isPristine || !isValid} onPress={handleSaveButton} onPressDone={onProfileSaved} />
         </Section.Row>
-        <ProfileDataTable
-          onChange={handleProfileChange}
-          editable
-          errors={errors}
-          profile={profile}
-          storedProfile={storedProfile}
-          setLockSubmit={setLockSubmit}
-          navigation={navigation}
-        />
+        <ProfileDataTable onChange={handleProfileChange} editable={true} errors={errors} profile={profile} />
       </Section>
     </Wrapper>
   )

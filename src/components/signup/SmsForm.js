@@ -53,10 +53,6 @@ class SmsForm extends React.Component<Props, State> {
     otp: Array(NumInputs).fill(null),
   }
 
-  componentDidMount() {
-    this.displayDelayedRenderButton()
-  }
-
   componentDidUpdate() {
     if (!this.state.renderButton) {
       this.displayDelayedRenderButton()
@@ -84,8 +80,9 @@ class SmsForm extends React.Component<Props, State> {
 
         this.setState({
           errorMessage: e.message || e,
-          loading: false,
         })
+      } finally {
+        this.setState({ loading: false })
       }
     } else {
       this.setState({
@@ -95,10 +92,8 @@ class SmsForm extends React.Component<Props, State> {
     }
   }
 
-  handleSubmit = async () => {
-    await this.props.screenProps.doneCallback({ smsValidated: true })
-
-    this.setState({ loading: false })
+  handleSubmit = () => {
+    this.props.screenProps.doneCallback({ smsValidated: true })
   }
 
   // eslint-disable-next-line class-methods-use-this
@@ -108,12 +103,9 @@ class SmsForm extends React.Component<Props, State> {
 
   handleRetry = async () => {
     this.setState({ sendingCode: true, otp: Array(NumInputs).fill(null), errorMessage: '' })
-    let { retryFunctionName } = this.props.screenProps
-
-    retryFunctionName = retryFunctionName || 'sendOTP'
 
     try {
-      await API[retryFunctionName]({ ...this.props.screenProps.data })
+      await API.sendOTP({ ...this.props.screenProps.data })
       this.setState({ sendingCode: false, renderButton: false, resentCode: true }, this.displayDelayedRenderButton)
 
       //turn checkmark back into regular resend text
@@ -151,7 +143,7 @@ class SmsForm extends React.Component<Props, State> {
                 value={otp}
                 placeholder="*"
                 isInputNum={true}
-                asside={[3]}
+                aside={[3]}
               />
               <ErrorText error={errorMessage} />
             </Section.Stack>
@@ -178,8 +170,8 @@ const SMSAction = ({ status, handleRetry }) => {
   }
   return (
     <Section.Text
-      textDecorationLine="underline"
       fontWeight="medium"
+      textDecorationLine="underline"
       fontSize={14}
       color="primary"
       onPress={handleRetry}
